@@ -1,45 +1,42 @@
 # # pg vecor, supabase access helper
 
-# import os
-# from typing import List, Optional, Tuple, Union
+from typing import List, Dict, Any
+from src.core.config import get_settings
+from src.db.supabase_client import get_supabase_client
 
-# import numpy as np
-# import pandas as pd
-# import psycopg2
-# from dotenv import load_dotenv
-# from psycopg2 import sql
-# from psycopg2.extensions import connection, cursor
+settings = get_settings()
 
-# load_dotenv()
+async def upsert_vectors(items: List[Dict[str, Any]]) -> bool:
+    """
+    items: [{"id": str, "embedding": [...], "metadata": {...}}, ...]
+    Minimal async wrapper for Supabase insertion/upsertion
+    """
+    sb = get_supabase_client()
+    ## supabase-py is sync-ish; this is a simplified wrapper (callers can run in thread pool if needed)
+    try:
+        # Table name embeddings
+        data = [{"id": it[id], "embedding": it["embedding"], "metadata": it["metadata"]} for it in items]
+        resp = sb.table("embeddings").upsert(data).execute()
+        return resp.status_code in (200, 201)
+    
+    except Exception as e:
+        print(f"Error upserting vectors: {e}")
+        return False
 
-# # Constants
-# DB_HOST = os.getenv("DB_HOST")
-# DB_PORT = os.getenv("DB_PORT")
-# DB_NAME = os.getenv("DB_NAME")
-# DB_USER = os.getenv("DB_USER")
-# DB_PASSWORD = os.getenv("DB_PASSWORD")
+async def query_vectors(query_embedding: List[float], top_k: int = 5):
+    """
+    Minimal query via Supabase SQL / RPC or vector extention
+    For starter: calls a simple RPC or uses 'match' if configured.
+    Returns list of dicts: {"id", "score", "metadata"} 
 
-
-# def get_db_connection() -> connection:
-#     """Establish and return a connection to the PostgreSQL database."""
-#     return psycopg2.connect(
-#         host=DB_HOST,
-#         port=DB_PORT,
-#         dbname=DB_NAME,
-#         user=DB_USER,
-#         password=DB_PASSWORD,
-#     )
-
-
-# def get_db_cursor(conn: connection) -> cursor:
-#     """Return a cursor from the given database connection."""
-#     return conn.cursor()
-
-
-# def close_db_connection(conn: connection) -> None:
-#     """Close the given database connection."""
-#     conn.close()
-
-
-# def execute_query(
-#     conn: connection, query: Union[str, sql.Composed], params: Optional
+    """
+    sb = get_supabase_client()
+    try:
+        # This demonstrates the idea — many Supabase setups will use raw SQL with pgvector <-> '<->' operator.
+        # For a starter, we call a simple RPC named 'match_embeddings' (you can create it in infra scripts).
+        payload = {"Query_embedding": query_embedding, "match_count": top_k}
+        resp = sb.rpc("match_embeddings", payload).execute()
+        return resp.data
+    except Exception as e:
+        print(f"Error querying vectors: {e}")
+        return []
