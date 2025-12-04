@@ -1,0 +1,1 @@
+# seeds sample texts/embeddings locally

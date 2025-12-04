@@ -1,0 +1,1 @@
+# build/deploy instructions for static frontend

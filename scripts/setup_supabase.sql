@@ -1,0 +1,1 @@
+-- SQL snippets for pgvector table/index
