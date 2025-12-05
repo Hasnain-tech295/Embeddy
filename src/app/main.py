@@ -3,6 +3,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import logging
+from src.core.logging import init_logging
+
+init_logging()
+
 
 # Importing route modules
 from src.app.api.routes.embed import router as embed_router
